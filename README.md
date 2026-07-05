@@ -1,16 +1,44 @@
-# React + Vite
+# 🪙 SkillMint
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Your skill is your currency.
 
-Currently, two official plugins are available:
+**SkillMint** is a skill-exchange platform where users list what they know, 
+get discovered by others, and connect directly — no middleman, no waiting.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Why "SkillMint"?
+- **Skill** — the core of the platform: what people can do, teach, or offer.
+- **Mint** — a place where something is coined and made valuable (like a coin mint), 
+  and also implies *fresh, polished, in mint condition*. 
+  Together, it reads as: a place where skills are turned into something valuable and tradeable.
 
-## React Compiler
+## ✨ Features
+- 🔍 Search and filter skills by category and city
+- 👤 Public profile pages for every user
+- 💬 Direct connect via WhatsApp — no middleman
+- ⭐ Ratings and reviews on individual skill listings
+- 🔖 Bookmark listings to revisit later
+- 📊 Personal dashboard with stats (views, reviews, skills posted)
+- 🏆 Leaderboard for top-rated skills
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
+- React + Vite
+- Firebase (Auth + Firestore)
+- React Router
+- Deployed on Vercel
 
-## Expanding the ESLint configuration
+## 🚀 Setup
+1. Clone the repo
+2. Run `npm install`
+3. Create a `.env.local` file with your own Firebase config keys
+4. Run `npm run dev`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🔑 Environment Variables
+This project needs the following in `.env.local` (not committed to git):
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+
+Built at SQI College of ICT · 2026
