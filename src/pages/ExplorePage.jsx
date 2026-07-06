@@ -77,14 +77,7 @@ function SkillCard({ skill, onOpen, bookmarks, onToggleBookmark, user, onAdminDe
         >🔖</button>
       )}
 
-      {/* Admin delete button — bottom of card, not overlapping photo */}
-      {user?.email === ADMIN_EMAIL && (
-        <button
-          onClick={e => { e.stopPropagation(); onAdminDelete(skill.id, skill.title) }}
-          style={{ position: 'absolute', bottom: 14, left: 14, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.25)', borderRadius: 50, color: '#FF6B6B', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '3px 10px' }}
-          title="Admin: Delete this skill"
-        >🗑 Delete</button>
-      )}
+
 
       {/* Avatar + name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
@@ -117,6 +110,14 @@ function SkillCard({ skill, onOpen, bookmarks, onToggleBookmark, user, onAdminDe
         </span>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>👁 {skill.views || 0}</span>
       </div>
+
+      {/* Admin delete — full width at bottom, clearly separated */}
+      {user?.email === ADMIN_EMAIL && (
+        <button
+          onClick={e => { e.stopPropagation(); onAdminDelete(skill.id, skill.title) }}
+          style={{ marginTop: 12, width: '100%', padding: '7px 0', borderRadius: 10, border: '1px solid rgba(255,80,80,0.25)', background: 'rgba(255,80,80,0.06)', color: '#FF6B6B', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+        >🗑 Admin Delete</button>
+      )}
     </div>
   )
 }

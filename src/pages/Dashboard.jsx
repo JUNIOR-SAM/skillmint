@@ -193,7 +193,19 @@ function ProfileSection({ user, profile, setProfile }) {
     }
   }, [profile])
 
-  const set = (f) => (e) => { setForm(p => ({ ...p, [f]: e.target.value })); setFormError('') }
+  const set = (f) => (e) => {
+    const val = e.target.value
+    // If user changes whatsapp number, reset verification
+    if (f === 'whatsapp' && val !== form.whatsapp && form.phoneVerified) {
+      setForm(p => ({ ...p, [f]: val, phoneVerified: false }))
+      setPhoneStep('idle')
+      setOtp('')
+      setOtpError('')
+    } else {
+      setForm(p => ({ ...p, [f]: val }))
+    }
+    setFormError('')
+  }
 
   // ── Photo file pick ──
   const handleFileChange = (e) => {
@@ -220,31 +232,46 @@ function ProfileSection({ user, profile, setProfile }) {
     setOtpError('')
     setPhoneStep('sending')
 
-    // Format number to international (+234XXXXXXXXXX)
-    let phone = form.whatsapp.trim()
+    // Format to international (+234XXXXXXXXXX)
+    let phone = form.whatsapp.trim().replace(/\s+/g, '')
     if (phone.startsWith('0')) phone = '+234' + phone.slice(1)
     else if (!phone.startsWith('+')) phone = '+234' + phone
 
     try {
-      // Setup invisible reCAPTCHA (required by Firebase)
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {},
-        })
+      // Always destroy old verifier before creating new one
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear() } catch(_) {}
+        window.recaptchaVerifier = null
       }
+
+      // Clear the container so reCAPTCHA can re-render
+      const container = document.getElementById('recaptcha-container')
+      if (container) container.innerHTML = ''
+
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
+        'expired-callback': () => {
+          window.recaptchaVerifier = null
+        }
+      })
+
+      await window.recaptchaVerifier.render()
       const confirmation = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier)
       confirmationRef.current = confirmation
       setPhoneStep('verify')
     } catch(e) {
-      console.error(e)
-      setOtpError(e.code === 'auth/invalid-phone-number'
-        ? 'Invalid phone number. Use format: 08012345678'
-        : e.code === 'auth/too-many-requests'
-        ? 'Too many attempts. Please wait a few minutes.'
-        : 'Failed to send OTP. Check your number and try again.')
-      setPhoneStep('idle')
+      console.error('OTP error:', e.code, e.message)
+      try { if (window.recaptchaVerifier) window.recaptchaVerifier.clear() } catch(_) {}
       window.recaptchaVerifier = null
+      setOtpError(
+        e.code === 'auth/invalid-phone-number' ? 'Invalid number. Use format: 08012345678' :
+        e.code === 'auth/too-many-requests'    ? 'Too many attempts. Wait a few minutes and try again.' :
+        e.code === 'auth/operation-not-allowed'? 'Phone auth not enabled. Contact support.' :
+        e.code === 'auth/quota-exceeded'       ? 'Daily SMS limit reached. Try again tomorrow.' :
+        'Failed to send OTP. Please try again.'
+      )
+      setPhoneStep('idle')
     }
   }
 
@@ -744,7 +771,17 @@ export default function Dashboard() {
         .nav-item:hover { background: rgba(255,255,255,0.04) !important; color: #fff !important; }
         .nav-item.active { background: rgba(0,212,255,0.1) !important; color: #00D4FF !important; }
         @media (max-width: 768px) {
-          .dashboard-sidebar { transform: translateX(-100%); transition: transform 0.3s ease; position: fixed !important; z-index: 300; height: 100vh; }
+          .dashboard-sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            position: fixed !important;
+            z-index: 300;
+            height: 100vh;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            display: flex !important;
+            flex-direction: column !important;
+          }
           .dashboard-sidebar.open { transform: translateX(0) !important; }
           .dashboard-main { margin-left: 0 !important; }
           .mobile-topbar { display: flex !important; }
@@ -754,7 +791,7 @@ export default function Dashboard() {
       `}</style>
 
       {/* ── Sidebar ── */}
-      <aside className={`dashboard-sidebar${sidebarOpen ? ' open' : ''}`} style={{ width: 240, background: '#080C18', borderRight: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: 0 }}>
+      <aside className={`dashboard-sidebar${sidebarOpen ? ' open' : ''}`} style={{ width: 240, background: '#080C18', borderRight: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: 0, overflowY: 'auto' }}>
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 22 }}>🪙</span>
@@ -776,7 +813,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
+        <nav style={{ flex: 1, padding: '12px', overflowY: 'auto', minHeight: 0 }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => { setActive(n.id); setSidebarOpen(false) }}
               className={`nav-item${active === n.id ? ' active' : ''}`}
@@ -786,9 +823,9 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <Link to="/explore" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 4 }}>🔍 Browse Explore</Link>
-          <button onClick={() => setLogoutModal(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'rgba(255,80,80,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>🚪 Log Out</button>
+        <div className="sidebar-bottom" style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 'auto' }}>
+          <Link to="/explore" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 4 }}>🔍 Browse Explore</Link>
+          <button onClick={() => { setSidebarOpen(false); setLogoutModal(true) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'rgba(255,80,80,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>🚪 Log Out</button>
         </div>
       </aside>
 
