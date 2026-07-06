@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import { Link, useNavigate } from 'react-router-dom'
-import { signOut } from 'firebase/auth'
+import { signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 import { auth, db } from '../firebase/config'
 import {
   collection, query, where, getDocs, doc, getDoc,
@@ -168,6 +168,7 @@ function ProfileSection({ user, profile, setProfile }) {
   const [otp, setOtp]                     = useState('')
   const [otpSent, setOtpSent]             = useState('')
   const [otpError, setOtpError]           = useState('')
+  const confirmationRef                    = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -187,6 +188,8 @@ function ProfileSection({ user, profile, setProfile }) {
         phoneVerified: profile.phoneVerified || false,
       })
       if (profile.photoBase64) setPhotoPreview(profile.photoBase64)
+      // Restore verified state on reload
+      if (profile.phoneVerified) setPhoneStep('done')
     }
   }, [profile])
 
@@ -211,26 +214,53 @@ function ProfileSection({ user, profile, setProfile }) {
     setForm(p => ({ ...p, photoBase64: base64 }))
   }
 
-  // ── Simulated phone OTP (replace with Firebase Phone Auth in production) ──
-  const sendOtp = () => {
+  // ── Real Firebase Phone Auth OTP ──
+  const sendOtp = async () => {
     if (!form.whatsapp || form.whatsapp.length < 10) { setOtpError('Enter a valid WhatsApp number first.'); return }
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    setOtpSent(code)
-    setPhoneStep('verify')
     setOtpError('')
-    // In production: call Firebase Phone Auth or Twilio here
-    alert(`[DEV MODE] Your OTP is: ${code}
+    setPhoneStep('sending')
 
-In production this would be sent via SMS.`)
+    // Format number to international (+234XXXXXXXXXX)
+    let phone = form.whatsapp.trim()
+    if (phone.startsWith('0')) phone = '+234' + phone.slice(1)
+    else if (!phone.startsWith('+')) phone = '+234' + phone
+
+    try {
+      // Setup invisible reCAPTCHA (required by Firebase)
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {},
+        })
+      }
+      const confirmation = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier)
+      confirmationRef.current = confirmation
+      setPhoneStep('verify')
+    } catch(e) {
+      console.error(e)
+      setOtpError(e.code === 'auth/invalid-phone-number'
+        ? 'Invalid phone number. Use format: 08012345678'
+        : e.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Please wait a few minutes.'
+        : 'Failed to send OTP. Check your number and try again.')
+      setPhoneStep('idle')
+      window.recaptchaVerifier = null
+    }
   }
 
-  const verifyOtp = () => {
-    if (otp === otpSent) {
+  const verifyOtp = async () => {
+    if (!otp || !confirmationRef.current) return
+    setOtpError('')
+    try {
+      await confirmationRef.current.confirm(otp)
+      // Save to Firestore immediately so it persists on reload
+      await updateDoc(doc(db, 'users', user.uid), { phoneVerified: true })
       setForm(p => ({ ...p, phoneVerified: true }))
       setPhoneStep('done')
-      setOtpError('')
-    } else {
-      setOtpError('Wrong code. Try again.')
+    } catch(e) {
+      setOtpError(e.code === 'auth/invalid-verification-code'
+        ? 'Wrong code. Please check and try again.'
+        : 'Verification failed. Try sending a new code.')
     }
   }
 
@@ -253,7 +283,6 @@ In production this would be sent via SMS.`)
     setSaving(false)
   }
 
-
   return (
     <div>
       <SectionHead title="My Profile" subtitle="Complete your profile to get discovered faster." />
@@ -268,7 +297,8 @@ In production this would be sent via SMS.`)
           <div style={{ height: '100%', width: `${completeness.score}%`, borderRadius: 3, background: completeness.score >= 80 ? '#4CAF50' : completeness.score >= 50 ? '#FFB347' : '#FF6B6B', transition: 'width 0.5s ease' }} />
         </div>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: '8px 0 0' }}>
-{completeness.score >= 80 ? `🏆 Great profile! You'll rank higher on Explore.` : `Fill in ${completeness.total - completeness.filled} more fields to boost your visibility.`}        </p>
+          {completeness.score >= 80 ? '🏆 Great profile! You"ll rank higher on Explore.' : `Fill in ${completeness.total - completeness.filled} more fields to boost your visibility.`}
+        </p>
       </div>
 
       <Card>
@@ -315,20 +345,29 @@ In production this would be sent via SMS.`)
         <div style={{ marginBottom: 16, padding: '14px 16px', background: form.phoneVerified ? 'rgba(76,175,80,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${form.phoneVerified ? 'rgba(76,175,80,0.25)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12 }}>
           {form.phoneVerified ? (
             <p style={{ margin: 0, fontSize: 13, color: '#4CAF50', fontWeight: 700 }}>✅ Phone number verified — clients trust you more!</p>
-          ) : phoneStep === 'idle' ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>🔒 Verify your WhatsApp number to get a verified badge</p>
-              <button onClick={sendOtp} style={{ padding: '7px 16px', borderRadius: 50, border: '1px solid rgba(0,212,255,0.3)', background: 'rgba(0,212,255,0.08)', color: '#00D4FF', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Send OTP</button>
+          ) : (phoneStep === 'idle' || phoneStep === 'sending') ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>🔒 Verify your WhatsApp number to get a verified badge</p>
+                <button onClick={sendOtp} disabled={phoneStep === 'sending'} style={{ padding: '7px 16px', borderRadius: 50, border: '1px solid rgba(0,212,255,0.3)', background: 'rgba(0,212,255,0.08)', color: '#00D4FF', fontSize: 12, fontWeight: 700, cursor: phoneStep === 'sending' ? 'not-allowed' : 'pointer', opacity: phoneStep === 'sending' ? 0.6 : 1 }}>
+                  {phoneStep === 'sending' ? '⏳ Sending…' : 'Send OTP'}
+                </button>
+              </div>
+              <div id="recaptcha-container"></div>
             </div>
           ) : phoneStep === 'verify' ? (
             <div>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Enter the 6-digit code sent to your number:</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6}
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>Enter the 6-digit SMS code sent to your number:</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter 6-digit code" maxLength={6}
                   style={{ flex: 1, background: '#05080F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 14px', color: '#fff', fontSize: 14, outline: 'none' }} />
                 <button onClick={verifyOtp} style={{ padding: '9px 18px', borderRadius: 50, border: 'none', background: '#00D4FF', color: '#05080F', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Verify</button>
               </div>
-              {otpError && <p style={{ color: '#FF6B6B', fontSize: 12, margin: '6px 0 0' }}>{otpError}</p>}
+              {otpError && <p style={{ color: '#FF6B6B', fontSize: 12, margin: '0 0 6px' }}>{otpError}</p>}
+              <button onClick={() => { setPhoneStep('idle'); setOtp(''); setOtpError(''); window.recaptchaVerifier = null }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                Resend code
+              </button>
             </div>
           ) : null}
         </div>
@@ -469,7 +508,7 @@ function SkillsSection({ user, onPost }) {
 //  SECTION: Post a Skill
 // ════════════════════════════════════════
 function PostSkillSection({ user, profile, onSuccess }) {
-  const [form, setForm] = useState({ title: '', category: '', description: '', whatsapp: '', city: '' })
+  const [form, setForm] = useState({ title: '', category: '', description: '', whatsapp: '', city: '', skillTools: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -520,6 +559,7 @@ function PostSkillSection({ user, profile, onSuccess }) {
           </div>
         </div>
         <Field label="Description" placeholder="Describe what you offer, your experience, and pricing..." value={form.description} onChange={set('description')} multiline rows={4} />
+        <Field label="Tools Used for This Skill" placeholder="e.g. VS Code, React (specific to this skill only)" value={form.skillTools} onChange={set('skillTools')} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <Field label="WhatsApp Number" placeholder="08012345678" value={form.whatsapp} onChange={set('whatsapp')} />
           <Dropdown label="State" value={form.city} onChange={set('city')} options={NIGERIAN_STATES} placeholder="Select state…" />
@@ -664,6 +704,7 @@ export default function Dashboard() {
   const [user, authLoading] = useAuthState(auth)
   const [active, setActive]         = useState('profile')
   const [profile, setProfile]       = useState(null)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen]   = useState(false)
   const [photoPopup, setPhotoPopup]     = useState(false)
   const [logoutModal, setLogoutModal]   = useState(false)
@@ -673,7 +714,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return
-    getDoc(doc(db, 'users', user.uid)).then(snap => { if (snap.exists()) setProfile(snap.data()) })
+    setProfileLoading(true)
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      if (snap.exists()) setProfile(snap.data())
+      setProfileLoading(false)
+    })
   }, [user])
 
   const handleLogout = async () => { await signOut(auth); navigate('/') }
@@ -787,20 +832,19 @@ export default function Dashboard() {
         </div>
 
         <div className="dash-content" style={{ padding: '40px 36px', maxWidth: 900, width: '100%' }}>
-          {active === 'profile'   && <ProfileSection   user={user} profile={profile} setProfile={setProfile} />}
-          {active === 'skills'    && <SkillsSection    user={user} onPost={() => setActive('post')} />}
-          {active === 'post'      && <PostSkillSection user={user} profile={profile} onSuccess={() => setActive('skills')} />}
-          {active === 'bookmarks' && <BookmarksSection user={user} />}
-          {active === 'stats'     && <StatsSection     user={user} />}
+          {profileLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, flexDirection: 'column', gap: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(0,212,255,0.2)', borderTop: '3px solid #00D4FF', animation: 'spin 0.8s linear infinite' }} />
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>Loading your profile…</p>
+            </div>
+          ) : null}
+          {!profileLoading && active === 'profile'   && <ProfileSection   user={user} profile={profile} setProfile={setProfile} />}
+          {!profileLoading && active === 'skills'    && <SkillsSection    user={user} onPost={() => setActive('post')} />}
+          {!profileLoading && active === 'post'      && <PostSkillSection user={user} profile={profile} onSuccess={() => setActive('skills')} />}
+          {!profileLoading && active === 'bookmarks' && <BookmarksSection user={user} />}
+          {!profileLoading && active === 'stats'     && <StatsSection     user={user} />}
         </div>
       </main>
     </div>
   )
 }
-
-
-
-
-
-
-// {completeness.score >= 80 ? `🏆 Great profile! You'll rank higher on Explore.` : `Fill in ${completeness.total - completeness.filled} more fields to boost your visibility.`}

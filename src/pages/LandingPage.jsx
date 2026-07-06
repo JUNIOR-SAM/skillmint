@@ -513,7 +513,7 @@ export default function LandingPage() {
           </div>
 
           {/* Credit */}
-          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, margin: 0 }}>Built by You · SQI College of ICT · 2026</p>
+          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, margin: 0 }}>Built by Samuel · SQI College of ICT · 2026</p>
         </div>
 
         {/* Mobile footer styles */}

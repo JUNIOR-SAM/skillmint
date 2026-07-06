@@ -23,8 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables — NEVER push these
+# ── Environment variables — NEVER push these ──
 .env
 .env.local
 .env.production
-.env.development
+.env.development    
+.vercel

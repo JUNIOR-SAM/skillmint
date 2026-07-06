@@ -54,12 +54,12 @@ function Nav({ user }) {
 }
 
 // ── Skill Card ──
-function SkillCard({ skill, onOpen, bookmarks, onToggleBookmark, user, onAdminDelete, onNavigate }) {
+function SkillCard({ skill, onOpen, bookmarks, onToggleBookmark, user, onAdminDelete, onNavigate, currentUserId }) {
   const color = categoryColor(skill.category)
   const isBookmarked = bookmarks.includes(skill.id)
   return (
     <div
-      onClick={() => onNavigate(skill.uid)}
+      onClick={() => { if (currentUserId && skill.uid === currentUserId) { onOpen(skill) } else { onNavigate(skill.uid) } }}
       style={{
         background: '#0A0F1E', border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 20, padding: 20, cursor: 'pointer',
@@ -77,11 +77,11 @@ function SkillCard({ skill, onOpen, bookmarks, onToggleBookmark, user, onAdminDe
         >🔖</button>
       )}
 
-      {/* Admin delete button */}
+      {/* Admin delete button — bottom of card, not overlapping photo */}
       {user?.email === ADMIN_EMAIL && (
         <button
           onClick={e => { e.stopPropagation(); onAdminDelete(skill.id, skill.title) }}
-          style={{ position: 'absolute', top: 14, left: 14, background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 50, color: '#FF6B6B', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '3px 10px' }}
+          style={{ position: 'absolute', bottom: 14, left: 14, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.25)', borderRadius: 50, color: '#FF6B6B', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '3px 10px' }}
           title="Admin: Delete this skill"
         >🗑 Delete</button>
       )}
@@ -542,7 +542,7 @@ export default function ExplorePage() {
               <div className="skill-card-grid">
                 {filtered.map(s => (
                   <SkillCard key={s.id} skill={s} onOpen={handleOpen}
-                    bookmarks={bookmarks} onToggleBookmark={handleToggleBookmark} user={user} onAdminDelete={handleAdminDelete} onNavigate={(uid) => navigate(`/profile/${uid}`)} />
+                    bookmarks={bookmarks} onToggleBookmark={handleToggleBookmark} user={user} onAdminDelete={handleAdminDelete} onNavigate={(uid) => navigate(`/profile/${uid}`)} currentUserId={user?.uid} />
                 ))}
               </div>
             </>
