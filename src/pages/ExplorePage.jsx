@@ -229,7 +229,7 @@ function SkillModal({ skill, onClose, user, bookmarks, onToggleBookmark, onRevie
 
           {/* Trust badges */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {skill.phoneVerified && <span style={{ fontSize: 11, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', border: '1px solid rgba(76,175,80,0.3)', padding: '4px 12px', borderRadius: 50, fontWeight: 700 }}>✅ Verified</span>}
+            {skill.emailVerified && <span style={{ fontSize: 11, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', border: '1px solid rgba(76,175,80,0.3)', padding: '4px 12px', borderRadius: 50, fontWeight: 700 }}>✅ Verified</span>}
             {skill.experience && <span style={{ fontSize: 11, background: 'rgba(0,212,255,0.08)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.2)', padding: '4px 12px', borderRadius: 50, fontWeight: 600 }}>🎓 {skill.experience}</span>}
             {skill.gender && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)', padding: '4px 12px', borderRadius: 50 }}>{skill.gender}</span>}
           </div>

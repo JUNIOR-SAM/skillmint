@@ -327,7 +327,7 @@ export default function ProfilePage() {
             <div className="profile-bio-block" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                 <h1 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>{profile.name}</h1>
-                {profile.phoneVerified && <span style={{ fontSize: 12, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', border: '1px solid rgba(76,175,80,0.3)', padding: '4px 12px', borderRadius: 50, fontWeight: 700 }}>✅ Verified</span>}
+                {profile.emailVerified && <span style={{ fontSize: 12, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', border: '1px solid rgba(76,175,80,0.3)', padding: '4px 12px', borderRadius: 50, fontWeight: 700 }}>✅ Verified</span>}
                 {user?.email === ADMIN_EMAIL && <span style={{ fontSize: 11, background: 'rgba(255,215,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.25)', padding: '3px 10px', borderRadius: 50, fontWeight: 700 }}>👑 Admin View</span>}
               </div>
 
