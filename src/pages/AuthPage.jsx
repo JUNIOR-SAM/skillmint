@@ -12,11 +12,11 @@ import { auth, db } from '../firebase/config'
 
 const provider = new GoogleAuthProvider()
 
-/* ── Animated background oxrbs ── */
+/* ── Animated background orbs ── */
 /* ── Floating bubble balls ── */
 const BUBBLES = [
-  { size: 200,  left: '8%',  top: '75%', color: 'rgba(0,212,255,0.18)',   border: 'rgba(0,212,255,0.45)',   dur: 14, delay: 0 },
-  { size: 200,  left: '18%', top: '60%', color: 'rgba(123,97,255,0.15)', border: 'rgba(123,97,255,0.4)',   dur: 10, delay: 1.5 },
+  { size: 90,  left: '8%',  top: '75%', color: 'rgba(0,212,255,0.18)',   border: 'rgba(0,212,255,0.45)',   dur: 14, delay: 0   },
+  { size: 55,  left: '18%', top: '60%', color: 'rgba(123,97,255,0.15)', border: 'rgba(123,97,255,0.4)',   dur: 10, delay: 1.5 },
   { size: 130, left: '75%', top: '80%', color: 'rgba(0,212,255,0.12)',   border: 'rgba(0,212,255,0.3)',    dur: 18, delay: 0.5 },
   { size: 40,  left: '85%', top: '55%', color: 'rgba(123,97,255,0.2)',  border: 'rgba(123,97,255,0.5)',   dur: 8,  delay: 3   },
   { size: 70,  left: '50%', top: '85%', color: 'rgba(0,212,255,0.14)',   border: 'rgba(0,212,255,0.35)',   dur: 12, delay: 2   },
@@ -51,10 +51,10 @@ function AnimatedOrbs() {
             height: b.size,
             borderRadius: '50%',
             background: b.color,
-            // border: `1.5px solid ${b.border}`,
+            border: `1.5px solid ${b.border}`,
             backdropFilter: 'blur(2px)',
             boxShadow: `inset 0 -4px 12px rgba(255,255,255,0.08), 0 0 20px ${b.border}`,
-            animation: `bubbleRise ${b.dur}s ease-in-out ${b.delay}s infinite, bubbleSway ${b.dur * 0.9}s ease-in-out ${b.delay}s infinite`,
+            animation: `bubbleRise ${b.dur}s ease-in-out ${b.delay}s infinite, bubbleSway ${b.dur * 0.6}s ease-in-out ${b.delay}s infinite`,
           }} />
         ))}
       </div>
@@ -77,7 +77,7 @@ function Toggle({ mode, onChange }) {
         width: 'calc(50% - 4px)',
         left: isLogin ? 'calc(50%)' : '4px',
         background: '#00D4FF', borderRadius: 50,
-        transition: 'left 0.9s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: '0 0 16px rgba(0,212,255,0.35)',
       }} />
       {[['signup', 'Create Account'], ['login', 'Log In']].map(([m, label]) => (
@@ -163,14 +163,17 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         const cred = await signInWithEmailAndPassword(auth, form.email.trim(), form.password)
-        await saveUserToFirestore(cred.user, '')
+        // Firestore save is non-blocking — auth success = navigate
+        saveUserToFirestore(cred.user, '').catch(console.error)
       } else {
         const cred = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password)
         await updateProfile(cred.user, { displayName: form.name.trim() })
-        await saveUserToFirestore(cred.user, form.name.trim())
+        // Firestore save is non-blocking — don't let it block signup
+        saveUserToFirestore(cred.user, form.name.trim()).catch(console.error)
       }
       navigate('/dashboard')
     } catch (e) {
+      console.error('Auth error:', e.code, e.message)
       setError(friendlyError(e.code))
     } finally {
       setLoading(false)
@@ -182,9 +185,10 @@ export default function AuthPage() {
     setGoogleLoading(true)
     try {
       const cred = await signInWithPopup(auth, provider)
-      await saveUserToFirestore(cred.user, '')
+      saveUserToFirestore(cred.user, '').catch(console.error)
       navigate('/dashboard')
     } catch (e) {
+      console.error('Google auth error:', e.code, e.message)
       setError(friendlyError(e.code))
     } finally {
       setGoogleLoading(false)
@@ -197,7 +201,7 @@ export default function AuthPage() {
     <div style={{
       minHeight: '100vh', background: '#05080F', display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: '24px', fontFamily: 'system-ui,-apple-system,sans-serif',
-      position: 'relative', overflow: 'hidden',
+      position: 'relative',
     }}>
       <style>{`
         @keyframes fadeSlideIn {
@@ -354,7 +358,7 @@ export default function AuthPage() {
 
         {/* Back to home */}
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13 }}>
-          <Link to="/" style={{ color: 'rgb(255, 255, 255)', textDecoration: 'none' }}>← Back to home</Link>
+          <Link to="/" style={{ color: 'rgba(255,255,255,0.25)', textDecoration: 'none' }}>← Back to home</Link>
         </p>
       </div>
     </div>
