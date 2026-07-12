@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { IconUser, IconTool, IconPlus, IconBookmark, IconChart, IconMenu, IconLogout, IconExplore, IconCamera, IconCheck, IconClose } from '../components/Icons'
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,11 +12,11 @@ import {
 import { useAuthState } from 'react-firebase-hooks/auth'
 
 const NAV = [
-  { id: 'profile',   icon: '👤', label: 'My Profile'   },
-  { id: 'skills',    icon: '🛠️', label: 'My Skills'    },
-  { id: 'post',      icon: '➕', label: 'Post a Skill'  },
-  { id: 'bookmarks', icon: '🔖', label: 'Bookmarks'    },
-  { id: 'stats',     icon: '📊', label: 'Stats'        },
+  { id: 'profile',   label: 'My Profile'   },
+  { id: 'skills',    label: 'My Skills'    },
+  { id: 'post',      label: 'Post a Skill' },
+  { id: 'bookmarks', label: 'Bookmarks'    },
+  { id: 'stats',     label: 'Stats'        },
 ]
 
 const CATEGORIES = ['Education','Tech','Creative','Trade','Health','Business']
@@ -142,7 +143,7 @@ function CropModal({ imageSrc, onConfirm, onCancel }) {
 
 // ── Profile completeness calculator ──
 function calcCompleteness(form) {
-  const fields = ['photoBase64','name','whatsapp','state','gender','experience','previousWork','tools','bio','linkedin','instagram','portfolio']
+  const fields = ['photoBase64','name','whatsapp','state','gender','experience','previousWork','bio','linkedin','instagram','portfolio','facebook','twitter','tiktok']
   const filled = fields.filter(f => form[f] && form[f].toString().trim())
   return { score: Math.round((filled.length / fields.length) * 100), filled: filled.length, total: fields.length }
 }
@@ -152,6 +153,7 @@ function calcCompleteness(form) {
 // ════════════════════════════════════════
 function ProfileSection({ user, profile, setProfile }) {
   const fileRef = useRef()
+  const [originalForm, setOriginalForm] = useState(null)
   const [form, setForm] = useState({
     name: '', bio: '', whatsapp: '', state: '',
     gender: '', experience: '', previousWork: '', tools: '',
@@ -177,7 +179,6 @@ function ProfileSection({ user, profile, setProfile }) {
         gender:        profile.gender        || '',
         experience:    profile.experience    || '',
         previousWork:  profile.previousWork  || '',
-        tools:         profile.tools         || '',
         photoBase64:   profile.photoBase64   || '',
         linkedin:      profile.linkedin      || '',
         instagram:     profile.instagram     || '',
@@ -185,8 +186,16 @@ function ProfileSection({ user, profile, setProfile }) {
         emailVerified:  profile.emailVerified  || false,
       })
       if (profile.photoBase64) setPhotoPreview(profile.photoBase64)
-      // Restore verified state on reload
       if (profile.emailVerified) setEmailVerifStep('done')
+      // Track original for dirty detection
+      setOriginalForm({
+        name: profile.name || '', bio: profile.bio || '', whatsapp: profile.whatsapp || '',
+        state: profile.state || '', gender: profile.gender || '', experience: profile.experience || '',
+        previousWork: profile.previousWork || '', photoBase64: profile.photoBase64 || '',
+        linkedin: profile.linkedin || '', instagram: profile.instagram || '',
+        portfolio: profile.portfolio || '', facebook: profile.facebook || '',
+        twitter: profile.twitter || '', tiktok: profile.tiktok || '',
+      })
     }
   }, [profile])
 
@@ -245,6 +254,7 @@ function ProfileSection({ user, profile, setProfile }) {
 
   const completeness = calcCompleteness(form)
   const hasPhoto = !!photoPreview
+  const isDirty = !originalForm || Object.keys(originalForm).some(k => (form[k] || '') !== (originalForm[k] || ''))
 
   const save = async () => {
     setFormError('')
@@ -256,6 +266,7 @@ function ProfileSection({ user, profile, setProfile }) {
     try {
       await updateDoc(doc(db, 'users', user.uid), { ...form })
       setProfile(p => ({ ...p, ...form }))
+      setOriginalForm({ ...form })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch(e) { console.error(e) }
@@ -295,7 +306,7 @@ function ProfileSection({ user, profile, setProfile }) {
               {photoPreview
                 ? <img src={photoPreview} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 24 }}>📷</span>
+                    <IconCamera size={24} color="rgba(255,255,255,0.3)" />
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>Click to upload</span>
                   </div>}
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}
@@ -359,28 +370,29 @@ function ProfileSection({ user, profile, setProfile }) {
           <Dropdown label="State *" value={form.state} onChange={set('state')} options={NIGERIAN_STATES} placeholder="Select your state…" />
           <Dropdown label="Gender" value={form.gender} onChange={set('gender')} options={['Male','Female','Prefer not to say']} placeholder="Select gender…" />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-          <Dropdown label="Years of Experience" value={form.experience} onChange={set('experience')} options={EXPERIENCE_YEARS} placeholder="Select experience…" />
-          <Field label="Tools / Software You Use" placeholder="e.g. Figma, Photoshop, Excel…" value={form.tools} onChange={set('tools')} />
-        </div>
+        <Dropdown label="Years of Experience" value={form.experience} onChange={set('experience')} options={EXPERIENCE_YEARS} placeholder="Select experience…" />
         <Field label="Where You've Worked Before" placeholder="e.g. Freelance, ABC Agency, Self-employed…" value={form.previousWork} onChange={set('previousWork')} />
         <Field label="Bio" placeholder="Tell people what you do, what makes you great, and who you help…" value={form.bio} onChange={set('bio')} multiline rows={4} />
 
         {/* ── Social links ── */}
         <div style={{ marginBottom: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>SOCIAL LINKS <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}>— helps clients verify you</span></p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>SOCIAL LINKS <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}>— helps clients verify you</span></p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>Fill 4+ to reach 100% profile completion</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-            <Field label="💼 LinkedIn URL" placeholder="linkedin.com/in/yourname" value={form.linkedin} onChange={set('linkedin')} />
-            <Field label="📸 Instagram Handle" placeholder="@yourhandle" value={form.instagram} onChange={set('instagram')} />
+            <Field label="LinkedIn URL" placeholder="linkedin.com/in/yourname" value={form.linkedin} onChange={set('linkedin')} />
+            <Field label="Instagram Handle" placeholder="@yourhandle" value={form.instagram} onChange={set('instagram')} />
+            <Field label="Facebook URL" placeholder="facebook.com/yourname" value={form.facebook} onChange={set('facebook')} />
+            <Field label="Twitter / X Handle" placeholder="@yourhandle" value={form.twitter} onChange={set('twitter')} />
+            <Field label="TikTok Handle" placeholder="@yourhandle" value={form.tiktok} onChange={set('tiktok')} />
+            <Field label="Portfolio / Website" placeholder="yourwebsite.com" value={form.portfolio} onChange={set('portfolio')} />
           </div>
-          <Field label="🌐 Portfolio / Website" placeholder="yourwebsite.com" value={form.portfolio} onChange={set('portfolio')} />
         </div>
 
         {formError && (
           <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)', color: '#FF6B6B', fontSize: 13, marginBottom: 16 }}>⚠️ {formError}</div>
         )}
-        <button onClick={save} disabled={saving} style={{ padding: '13px 36px', borderRadius: 50, border: 'none', background: saving ? 'rgba(0,212,255,0.5)' : '#00D4FF', color: '#05080F', fontWeight: 800, fontSize: 15, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {saving ? <><Spinner /> Saving…</> : saved ? '✅ Profile Saved!' : 'Save Profile'}
+        <button onClick={save} disabled={saving || (!isDirty && !saved)} style={{ padding: '13px 36px', borderRadius: 50, border: 'none', background: saving ? 'rgba(0,212,255,0.5)' : (!isDirty && originalForm) ? 'rgba(255,255,255,0.06)' : '#00D4FF', color: saving ? '#05080F' : (!isDirty && originalForm) ? 'rgba(255,255,255,0.3)' : '#05080F', fontWeight: 800, fontSize: 15, cursor: (saving || (!isDirty && originalForm)) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.3s ease' }}>
+          {saving ? <><Spinner /> Saving…</> : saved ? '✅ Profile Saved!' : (!isDirty && originalForm) ? 'No Changes' : 'Save Profile'}
         </button>
       </Card>
 
@@ -430,12 +442,14 @@ function SkillsSection({ user, onPost }) {
         photoBase64:   p.photoBase64   || '',
         gender:        p.gender        || '',
         experience:    p.experience    || '',
-        tools:         p.tools         || '',
         previousWork:  p.previousWork  || '',
         linkedin:      p.linkedin      || '',
         instagram:     p.instagram     || '',
         portfolio:     p.portfolio     || '',
-        phoneVerified: p.phoneVerified || false,
+        facebook:      p.facebook      || '',
+        twitter:       p.twitter       || '',
+        tiktok:        p.tiktok        || '',
+        emailVerified: p.emailVerified || false,
         name:          p.name          || '',
       }
       const q = query(collection(db, 'skills'), where('uid', '==', user.uid))
@@ -519,6 +533,9 @@ function PostSkillSection({ user, profile, onSuccess }) {
         instagram:     profile?.instagram     || '',
         portfolio:     profile?.portfolio     || '',
         emailVerified:  profile?.emailVerified  || false,
+        facebook:      profile?.facebook      || '',
+        twitter:       profile?.twitter       || '',
+        tiktok:        profile?.tiktok        || '',
         rating: 0, reviews: 0, views: 0,
         createdAt: serverTimestamp(),
       })
@@ -774,14 +791,19 @@ export default function Dashboard() {
             <button key={n.id} onClick={() => { setActive(n.id); setSidebarOpen(false) }}
               className={`nav-item${active === n.id ? ' active' : ''}`}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 2, textAlign: 'left', transition: 'all 0.15s ease', borderLeft: active === n.id ? '3px solid #00D4FF' : '3px solid transparent' }}>
-              <span style={{ fontSize: 18 }}>{n.icon}</span>{n.label}
+              {n.id === 'profile'   && <IconUser size={18} color={active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)'} />}
+              {n.id === 'skills'    && <IconTool size={18} color={active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)'} />}
+              {n.id === 'post'      && <IconPlus size={18} color={active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)'} />}
+              {n.id === 'bookmarks' && <IconBookmark size={18} color={active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)'} />}
+              {n.id === 'stats'     && <IconChart size={18} color={active === n.id ? '#00D4FF' : 'rgba(255,255,255,0.45)'} />}
+              {n.label}
             </button>
           ))}
         </nav>
 
         <div className="sidebar-bottom" style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 'auto' }}>
-          <Link to="/explore" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 4 }}>🔍 Browse Explore</Link>
-          <button onClick={() => { setSidebarOpen(false); setLogoutModal(true) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'rgba(255,80,80,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>🚪 Log Out</button>
+          <Link to="/explore" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 4 }}><IconExplore size={16} color="rgba(255,255,255,0.4)" /> Browse Explore</Link>
+          <button onClick={() => { setSidebarOpen(false); setLogoutModal(true) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'rgba(255,80,80,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}><IconLogout size={16} color="rgba(255,80,80,0.7)" /> Log Out</button>
         </div>
       </aside>
 
@@ -817,7 +839,7 @@ export default function Dashboard() {
       {/* ── Main ── */}
       <main className="dashboard-main" style={{ flex: 1, marginLeft: 240, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <div className="mobile-topbar" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#080C18', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'sticky', top: 0, zIndex: 90 }}>
-          <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>☰</button>
+          <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconMenu size={22} color="#fff" /></button>
           <span style={{ fontWeight: 900, fontSize: 16 }}>Skill<span style={{ color: '#00D4FF' }}>Mint</span></span>
           <div onClick={() => photoBase64 && setPhotoPopup(true)} style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', border: '1px solid rgba(0,212,255,0.25)', background: 'rgba(0,212,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: photoBase64 ? 'pointer' : 'default' }}>
             {photoBase64 ? <img src={photoBase64} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#00D4FF', fontWeight: 900, fontSize: 13 }}>{initials}</span>}

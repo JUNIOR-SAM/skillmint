@@ -243,11 +243,14 @@ function SkillModal({ skill, onClose, user, bookmarks, onToggleBookmark, onRevie
           )}
 
           {/* Social links */}
-          {(skill.linkedin || skill.instagram || skill.portfolio) && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-              {skill.linkedin  && <a href={skill.linkedin.startsWith('http') ? skill.linkedin : `https://${skill.linkedin}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#00D4FF', textDecoration: 'none', padding: '6px 14px', borderRadius: 50, border: '1px solid rgba(0,212,255,0.2)', background: 'rgba(0,212,255,0.06)' }}>💼 LinkedIn</a>}
-              {skill.instagram && <a href={`https://instagram.com/${skill.instagram.replace('@','')}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#FF6B9D', textDecoration: 'none', padding: '6px 14px', borderRadius: 50, border: '1px solid rgba(255,107,157,0.2)', background: 'rgba(255,107,157,0.06)' }}>📸 Instagram</a>}
-              {skill.portfolio && <a href={skill.portfolio.startsWith('http') ? skill.portfolio : `https://${skill.portfolio}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#7B61FF', textDecoration: 'none', padding: '6px 14px', borderRadius: 50, border: '1px solid rgba(123,97,255,0.2)', background: 'rgba(123,97,255,0.06)' }}>🌐 Portfolio</a>}
+          {(skill.linkedin || skill.instagram || skill.portfolio || skill.facebook || skill.twitter || skill.tiktok) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {skill.linkedin  && <a href={skill.linkedin.startsWith('http') ? skill.linkedin : `https://${skill.linkedin}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0077B5', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(0,119,181,0.3)', background: 'rgba(0,119,181,0.08)' }}>LinkedIn</a>}
+              {skill.instagram && <a href={`https://instagram.com/${skill.instagram.replace('@','')}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#E1306C', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(225,48,108,0.3)', background: 'rgba(225,48,108,0.08)' }}>Instagram</a>}
+              {skill.facebook  && <a href={skill.facebook.startsWith('http') ? skill.facebook : `https://${skill.facebook}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1877F2', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(24,119,242,0.3)', background: 'rgba(24,119,242,0.08)' }}>Facebook</a>}
+              {skill.twitter   && <a href={`https://twitter.com/${skill.twitter.replace('@','')}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1DA1F2', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(29,161,242,0.3)', background: 'rgba(29,161,242,0.08)' }}>Twitter/X</a>}
+              {skill.tiktok    && <a href={`https://tiktok.com/@${skill.tiktok.replace('@','')}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#ff0050', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(255,0,80,0.3)', background: 'rgba(255,0,80,0.08)' }}>TikTok</a>}
+              {skill.portfolio && <a href={skill.portfolio.startsWith('http') ? skill.portfolio : `https://${skill.portfolio}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#7B61FF', textDecoration: 'none', padding: '5px 12px', borderRadius: 50, border: '1px solid rgba(123,97,255,0.3)', background: 'rgba(123,97,255,0.08)' }}>Portfolio</a>}
             </div>
           )}
 
